@@ -47,6 +47,7 @@ import { ZmanimWidget } from './components/widgets/ZmanimWidget';
 import { MiniCalendarWidget } from './components/widgets/MiniCalendarWidget';
 import { UpcomingHolidaysWidget } from './components/widgets/UpcomingHolidaysWidget';
 import { HaYomYomWidget } from './components/widgets/HaYomYomWidget';
+import { DailyTehillimWidget } from './components/widgets/DailyTehillimWidget';
 import { DafYomiWidget } from './components/widgets/DafYomiWidget';
 import { DailyThoughtWidget } from './components/widgets/DailyThoughtWidget';
 import { PrayerDirectionWidget } from './components/widgets/PrayerDirectionWidget';
@@ -95,6 +96,13 @@ const DEFAULT_WIDGETS: WidgetInstance[] = [
     id: 'w-hayom-yom',
     type: 'hayom_yom',
     title: 'HaYom Yom · לוח היום יום',
+    span: 1,
+    visible: true,
+  },
+  {
+    id: 'w-daily-tehillim',
+    type: 'daily_tehillim',
+    title: 'Daily Tehillim · תהילים יומי',
     span: 1,
     visible: true,
   },
@@ -362,6 +370,17 @@ export default function App() {
               hayomYomDefault
             );
           }
+          if (!nextList.some((w) => w.type === 'daily_tehillim')) {
+            const tehillimDefault = DEFAULT_WIDGETS.find(
+              (w) => w.type === 'daily_tehillim'
+            )!;
+            const hyyIdx = nextList.findIndex((w) => w.type === 'hayom_yom');
+            nextList.splice(
+              hyyIdx >= 0 ? hyyIdx + 1 : 4,
+              0,
+              tehillimDefault
+            );
+          }
           return nextList;
         }
       }
@@ -501,6 +520,7 @@ export default function App() {
             'mini_calendar',
             'upcoming_holidays',
             'hayom_yom',
+            'daily_tehillim',
             'daf_yomi',
             'daily_thought',
             'prayer_direction',
@@ -520,6 +540,7 @@ export default function App() {
             'mini_calendar',
             'upcoming_holidays',
             'hayom_yom',
+            'daily_tehillim',
             'daily_thought',
             'prayer_direction',
             'daily_minyan',
@@ -556,6 +577,7 @@ export default function App() {
           'mini_calendar',
           'upcoming_holidays',
           'hayom_yom',
+          'daily_tehillim',
           'daf_yomi',
           'daily_thought',
           'parsha',
@@ -570,6 +592,7 @@ export default function App() {
           'mini_calendar',
           'upcoming_holidays',
           'hayom_yom',
+          'daily_tehillim',
           'daily_thought',
           'parsha',
           'shabbat_prep',
@@ -1531,6 +1554,16 @@ export default function App() {
 
                       {widget.type === 'hayom_yom' && (
                         <HaYomYomWidget
+                          selectedDate={selectedDate}
+                          onChangeDate={jumpToSpecificDate}
+                          onOpenReader={(ref, title) =>
+                            setReaderRef({ ref, title })
+                          }
+                        />
+                      )}
+
+                      {widget.type === 'daily_tehillim' && (
+                        <DailyTehillimWidget
                           selectedDate={selectedDate}
                           onChangeDate={jumpToSpecificDate}
                           onOpenReader={(ref, title) =>

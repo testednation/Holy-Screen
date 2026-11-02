@@ -191,11 +191,41 @@ export interface HaYomYomEntry {
   sourceNote: string;
 }
 
+export interface DailyTehillimChapterItem {
+  chapterNum: number;
+  labelEn: string;
+  labelHe: string;
+  sefariaRef: string;
+  subtitleEn?: string;
+}
+
+export interface DailyTehillimData {
+  hebrewDateDisplayHe: string;
+  hebrewDateDisplayEn: string;
+  hebrewDayNum: number;
+  hebrewDayGematria: string;
+  hebrewMonthEn: string;
+  hebrewMonthHe: string;
+  seferNum: 1 | 2 | 3 | 4 | 5;
+  seferTitleEn: string;
+  seferTitleHe: string;
+  rangeLabelEn: string;
+  rangeLabelHe: string;
+  primarySefariaRef: string;
+  is29DayCombinedMonthEnd: boolean;
+  chapters: DailyTehillimChapterItem[];
+  featuredPasukHe: string;
+  featuredPasukEn: string;
+  featuredPasukRef: string;
+  themeSummary: string;
+}
+
 export type BuiltinWidgetType =
   | 'zmanim'
   | 'mini_calendar'
   | 'upcoming_holidays'
   | 'hayom_yom'
+  | 'daily_tehillim'
   | 'daf_yomi'
   | 'daily_thought'
   | 'prayer_direction'

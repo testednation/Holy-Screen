@@ -30,6 +30,8 @@ const WIDGET_DESCRIPTIONS: Record<string, string> = {
     'Countdown to the next major Jewish festival with remaining days, Hebrew & Gregorian dates, Erev sunset time, and Mitzvot summary.',
   hayom_yom:
     'Daily Chabad Chassidic almanac (לוח היום יום) compiled by the Lubavitcher Rebbe with daily Tehillim chapters, Tanya portion, and bilingual aphorism.',
+  daily_tehillim:
+    'Daily Tehillim (תהילים יומי) chapters mapped to the day of the Hebrew month, with a featured bilingual verse, chapter checkoffs, and direct Sefaria Reader access.',
   daf_yomi:
     'Dedicated Talmud Bavli Daf Yomi tracker with Amud Aleph & Amud Bet checkoffs, Masechet progress bar, Siyum countdown, and bilingual Gemara reader.',
   daily_thought:
