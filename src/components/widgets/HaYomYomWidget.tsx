@@ -8,6 +8,10 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { getHaYomYomForDate } from '../../data/hayomYomData';
+import {
+  useLanguage,
+  localizeHaYomYomEntry,
+} from '../LanguageControl';
 
 interface HaYomYomWidgetProps {
   selectedDate: Date;
@@ -20,9 +24,13 @@ export const HaYomYomWidget: React.FC<HaYomYomWidgetProps> = ({
   onChangeDate,
   onOpenReader,
 }) => {
+  const { lang, t } = useLanguage();
   const [savedToKavanot, setSavedToKavanot] = useState(false);
 
-  const entry = useMemo(() => getHaYomYomForDate(selectedDate), [selectedDate]);
+  const entry = useMemo(
+    () => localizeHaYomYomEntry(getHaYomYomForDate(selectedDate), lang),
+    [selectedDate, lang]
+  );
 
   const shiftDay = (delta: number) => {
     const next = new Date(selectedDate);
@@ -54,7 +62,7 @@ export const HaYomYomWidget: React.FC<HaYomYomWidgetProps> = ({
           <div>
             <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>לוח היום יום · Chassidic Daily Almanac</span>
+              <span>{t.widgetHaYomYom}</span>
             </div>
             <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100 mt-0.5">
               HaYom Yom · {entry.hebrewDateDisplayHe}

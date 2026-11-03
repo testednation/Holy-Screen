@@ -1,6 +1,6 @@
 {
   "name": "Orah — Daily Zmanim, Parsha & Personal Homescreen",
   "description": "A customizable Jewish daily homescreen and dashboard featuring live Halachic Zmanim with a solar horizon arc, local weather, weekly Parsha, daily Limud, and modular widgets.",
-  "requestFramePermissions": ["geolocation"],
+  "requestFramePermissions": ["geolocation", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

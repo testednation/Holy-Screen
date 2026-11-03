@@ -8,6 +8,10 @@ import {
   HeartHandshake,
 } from 'lucide-react';
 import { getDailyTehillimForDate } from '../../data/tehillimData';
+import {
+  useLanguage,
+  localizeDailyTehillimData,
+} from '../LanguageControl';
 
 interface DailyTehillimWidgetProps {
   selectedDate: Date;
@@ -20,9 +24,10 @@ export const DailyTehillimWidget: React.FC<DailyTehillimWidgetProps> = ({
   onChangeDate,
   onOpenReader,
 }) => {
+  const { lang, t } = useLanguage();
   const data = useMemo(
-    () => getDailyTehillimForDate(selectedDate),
-    [selectedDate]
+    () => localizeDailyTehillimData(getDailyTehillimForDate(selectedDate), lang),
+    [selectedDate, lang]
   );
 
   const storageKey = useMemo(() => {
@@ -83,10 +88,10 @@ export const DailyTehillimWidget: React.FC<DailyTehillimWidgetProps> = ({
           <div>
             <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
               <HeartHandshake className="w-3.5 h-3.5" />
-              <span>תהילים יומי · Monthly Tehillim Cycle</span>
+              <span>{t.widgetDailyTehillim}</span>
             </div>
             <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100 mt-0.5">
-              Daily Tehillim · Day {data.hebrewDayNum} ({data.hebrewDayGematria}{' '}
+              Daily Tehillim · {data.hebrewDayNum} ({data.hebrewDayGematria}{' '}
               {data.hebrewMonthHe})
             </h2>
           </div>
@@ -96,8 +101,8 @@ export const DailyTehillimWidget: React.FC<DailyTehillimWidgetProps> = ({
               type="button"
               onClick={() => shiftDay(-1)}
               className="p-1.5 rounded-lg bg-stone-100 dark:bg-stone-800/80 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
-              title="Previous Day’s Tehillim"
-              aria-label="Previous Day’s Tehillim"
+              title={t.previousDay}
+              aria-label={t.previousDay}
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
@@ -105,8 +110,8 @@ export const DailyTehillimWidget: React.FC<DailyTehillimWidgetProps> = ({
               type="button"
               onClick={() => shiftDay(1)}
               className="p-1.5 rounded-lg bg-stone-100 dark:bg-stone-800/80 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
-              title="Next Day’s Tehillim"
-              aria-label="Next Day’s Tehillim"
+              title={t.nextDay}
+              aria-label={t.nextDay}
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
@@ -141,7 +146,7 @@ export const DailyTehillimWidget: React.FC<DailyTehillimWidgetProps> = ({
             className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-amber-700 hover:bg-amber-800 dark:bg-amber-500 dark:hover:bg-amber-400 text-white dark:text-stone-950 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 shadow-xs"
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span>Open in Sefaria Reader</span>
+            <span>{t.openInSefaria}</span>
           </button>
         </div>
 

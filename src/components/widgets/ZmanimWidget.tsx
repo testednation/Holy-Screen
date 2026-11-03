@@ -119,6 +119,116 @@ export const ZmanimWidget: React.FC<ZmanimWidgetProps> = ({
     );
   }, [activeInstant, location.latitude, location.longitude, zmanim.sunrise, zmanim.sunset]);
 
+  // Dynamic Day Progression metrics strictly between Sunrise (Netz HaChama) and Sunset (Shkiah)
+  const dayProgression = useMemo(() => {
+    const sunriseMs = zmanim.sunrise.getTime();
+    const sunsetMs = zmanim.sunset.getTime();
+    const currentMs = activeInstant.getTime();
+    const totalDaylightMs = Math.max(1, sunsetMs - sunriseMs);
+
+    const rawRatio = (currentMs - sunriseMs) / totalDaylightMs;
+    const clampedRatio = Math.max(0, Math.min(1, rawRatio));
+    const percentExact = Math.round(clampedRatio * 1000) / 10; // e.g. 64.2%
+
+    const formatDurationHm = (ms: number) => {
+      const totalMins = Math.max(0, Math.round(ms / 60000));
+      const h = Math.floor(totalMins / 60);
+      const m = totalMins % 60;
+      return h > 0 ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
+    };
+
+    const totalDaylightFormatted = formatDurationHm(totalDaylightMs);
+    const isBeforeSunrise = currentMs < sunriseMs;
+    const isAfterSunset = currentMs > sunsetMs;
+
+    const elapsedMs = isBeforeSunrise
+      ? 0
+      : isAfterSunset
+      ? totalDaylightMs
+      : currentMs - sunriseMs;
+    const remainingMs = isBeforeSunrise
+      ? totalDaylightMs
+      : isAfterSunset
+      ? 0
+      : sunsetMs - currentMs;
+
+    const untilSunriseFormatted = isBeforeSunrise
+      ? formatDurationHm(sunriseMs - currentMs)
+      : null;
+    const sinceSunsetFormatted = isAfterSunset
+      ? formatDurationHm(currentMs - sunsetMs)
+      : null;
+
+    const sunriseFormatted =
+      zmanim.items.find((i) => i.id === 'sunrise')?.formattedTime ||
+      formatTimeInTz(zmanim.sunrise, location.tzid, false);
+    const sunsetFormatted =
+      zmanim.items.find((i) => i.id === 'sunset')?.formattedTime ||
+      formatTimeInTz(zmanim.sunset, location.tzid, false);
+    const chatzotFormatted =
+      zmanim.items.find((i) => i.id === 'chatzot')?.formattedTime || '';
+
+    // Key proportional Halachic milestones along the Sunrise -> Sunset span (0% to 100%)
+    const milestones = [
+      {
+        id: 'shema_gra',
+        label: 'Shema',
+        heLabel: 'שמע',
+        shaahLabel: '3h',
+        pct: 25,
+        time: new Date(sunriseMs + totalDaylightMs * 0.25),
+      },
+      {
+        id: 'tefillah',
+        label: 'Tefillah',
+        heLabel: 'תפילה',
+        shaahLabel: '4h',
+        pct: 33.33,
+        time: new Date(sunriseMs + totalDaylightMs * (4 / 12)),
+      },
+      {
+        id: 'chatzot',
+        label: 'Chatzot',
+        heLabel: 'חצות',
+        shaahLabel: '6h',
+        pct: 50,
+        time: new Date(sunriseMs + totalDaylightMs * 0.5),
+      },
+      {
+        id: 'mincha_ketanah',
+        label: 'M. Ketanah',
+        heLabel: 'מנחה קטנה',
+        shaahLabel: '9.5h',
+        pct: 79.17,
+        time: new Date(sunriseMs + totalDaylightMs * (9.5 / 12)),
+      },
+      {
+        id: 'plag',
+        label: 'Plag',
+        heLabel: 'פלג',
+        shaahLabel: '10.75h',
+        pct: 89.58,
+        time: new Date(sunriseMs + totalDaylightMs * (10.75 / 12)),
+      },
+    ];
+
+    return {
+      clampedRatio,
+      percentExact,
+      totalDaylightFormatted,
+      elapsedFormatted: formatDurationHm(elapsedMs),
+      remainingFormatted: formatDurationHm(remainingMs),
+      isBeforeSunrise,
+      isAfterSunset,
+      untilSunriseFormatted,
+      sinceSunsetFormatted,
+      sunriseFormatted,
+      sunsetFormatted,
+      chatzotFormatted,
+      milestones,
+    };
+  }, [activeInstant, zmanim.sunrise, zmanim.sunset, zmanim.items, location.tzid]);
+
   // Progress along the chart window [0..1]
   const solarArcProgress = useMemo(() => {
     if (scrubProgress !== null) return scrubProgress;
@@ -933,8 +1043,183 @@ export const ZmanimWidget: React.FC<ZmanimWidgetProps> = ({
             </svg>
           </div>
 
-          {/* Interactive Time Scrubber & Daylight Progress Bar */}
-          <div className="mt-2 pt-2.5 border-t border-stone-800/90 flex flex-wrap items-center justify-between gap-3 text-xs">
+          {/* DYNAMIC DAY PROGRESSION BAR (SUNRISE / NETZ HACHAMA → SUNSET / SHKIAH) */}
+          <div className="mt-3 pt-3 border-t border-stone-800/90">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 font-medium text-stone-200">
+                  <Sun className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Day Progression (Netz → Shkiah)</span>
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/35 text-amber-300 font-mono tabular-nums font-semibold text-[11px]">
+                  {dayProgression.percentExact.toFixed(1)}% Elapsed
+                </span>
+                {dayProgression.isBeforeSunrise && (
+                  <span className="text-[11px] font-mono tabular-nums text-indigo-300">
+                    · Pre-Sunrise (Netz in {dayProgression.untilSunriseFormatted})
+                  </span>
+                )}
+                {dayProgression.isAfterSunset && (
+                  <span className="text-[11px] font-mono tabular-nums text-indigo-300">
+                    · Daylight Complete (Shkiah +{dayProgression.sinceSunsetFormatted})
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono tabular-nums text-stone-400">
+                <span>
+                  Elapsed:{' '}
+                  <strong className="text-stone-200 font-semibold">
+                    {dayProgression.elapsedFormatted}
+                  </strong>
+                </span>
+                <span className="text-stone-600" aria-hidden="true">
+                  ·
+                </span>
+                <span>
+                  Remaining:{' '}
+                  <strong className="text-amber-300 font-semibold">
+                    {dayProgression.remainingFormatted}
+                  </strong>
+                </span>
+                <span className="text-stone-600" aria-hidden="true">
+                  ·
+                </span>
+                <span>
+                  Total Daylight:{' '}
+                  <strong className="text-stone-300 font-semibold">
+                    {dayProgression.totalDaylightFormatted}
+                  </strong>
+                </span>
+              </div>
+            </div>
+
+            {/* Interactive Visual Progress Track with 12 Sha'ot Zmaniyot Ticks & Halachic Milestones */}
+            <div
+              className="relative h-3.5 w-full rounded-full bg-stone-900 border border-stone-800 overflow-visible cursor-pointer group/daybar select-none"
+              role="progressbar"
+              aria-label="Daylight progression from sunrise to sunset"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(dayProgression.percentExact)}
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const clickRatio = Math.max(
+                  0,
+                  Math.min(1, (e.clientX - rect.left) / Math.max(1, rect.width))
+                );
+                const targetTimeMs =
+                  zmanim.sunrise.getTime() +
+                  clickRatio *
+                    (zmanim.sunset.getTime() - zmanim.sunrise.getTime());
+                setScrubProgress(getNormalizedTimeT(new Date(targetTimeMs)));
+              }}
+              title="Click anywhere along the Sunrise-to-Sunset bar to inspect that daylight moment"
+            >
+              {/* 12 Proportional Hours (Sha'ot Zmaniyot) Subtle Subdivision Lines */}
+              <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((hr) => (
+                  <div
+                    key={hr}
+                    style={{ left: `${(hr / 12) * 100}%` }}
+                    className={`absolute top-0 bottom-0 w-px ${
+                      hr === 6
+                        ? 'bg-amber-300/45'
+                        : hr === 3 || hr === 4 || hr === 9
+                        ? 'bg-stone-600/75'
+                        : 'bg-stone-800/90'
+                    }`}
+                  />
+                ))}
+
+                {/* Illuminated Daylight Fill Bar */}
+                <div
+                  style={{ width: `${dayProgression.clampedRatio * 100}%` }}
+                  className="h-full rounded-l-full bg-gradient-to-r from-amber-600 via-amber-400 to-yellow-300 transition-[width] duration-300 relative"
+                />
+              </div>
+
+              {/* Milestone Tick Dots along the Bar (Shema 25%, Tefillah 33.3%, Chatzot 50%, M. Ketanah 79.2%, Plag 89.6%) */}
+              {dayProgression.milestones.map((ms) => {
+                const isReached =
+                  dayProgression.percentExact >= ms.pct - 0.2;
+                return (
+                  <button
+                    key={ms.id}
+                    type="button"
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      setSelectedZmanId(ms.id);
+                      setScrubProgress(getNormalizedTimeT(ms.time));
+                    }}
+                    style={{ left: `${ms.pct}%` }}
+                    title={`${ms.label} (${ms.heLabel}) · ${ms.shaahLabel} Sha'ah Zmanit (${Math.round(
+                      ms.pct
+                    )}% of day)`}
+                    className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full border transition-transform hover:scale-125 z-10 ${
+                      isReached
+                        ? 'bg-stone-950 border-yellow-200'
+                        : 'bg-stone-800 border-stone-500 hover:border-amber-400'
+                    }`}
+                  />
+                );
+              })}
+
+              {/* Glowing Active Sun Progress Indicator Thumb */}
+              <div
+                style={{ left: `${dayProgression.clampedRatio * 100}%` }}
+                className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-amber-300 border-2 border-white shadow-[0_0_10px_rgba(251,191,36,0.95)] pointer-events-none z-20 transition-[left] duration-300"
+              />
+            </div>
+
+            {/* Sunrise, Proportional Milestones & Sunset Timestamp Labels Below Track */}
+            <div className="flex items-center justify-between gap-2 mt-1.5 text-[10px] font-mono tabular-nums text-stone-400">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedZmanId('sunrise');
+                  setScrubProgress(getNormalizedTimeT(zmanim.sunrise));
+                }}
+                className="text-left hover:text-amber-300 transition-colors"
+              >
+                <span className="text-amber-400 font-semibold">0% Netz</span> ·{' '}
+                {dayProgression.sunriseFormatted}
+              </button>
+
+              <div className="hidden sm:flex items-center gap-3 text-stone-400">
+                {dayProgression.milestones.map((ms) => (
+                  <button
+                    key={ms.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedZmanId(ms.id);
+                      setScrubProgress(getNormalizedTimeT(ms.time));
+                    }}
+                    className={`hover:text-amber-300 transition-colors ${
+                      selectedZmanId === ms.id ? 'text-amber-300 font-semibold' : ''
+                    }`}
+                  >
+                    {ms.label} ({Math.round(ms.pct)}%)
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedZmanId('sunset');
+                  setScrubProgress(getNormalizedTimeT(zmanim.sunset));
+                }}
+                className="text-right hover:text-indigo-300 transition-colors"
+              >
+                <span className="text-indigo-300 font-semibold">100% Shkiah</span> ·{' '}
+                {dayProgression.sunsetFormatted}
+              </button>
+            </div>
+          </div>
+
+          {/* Interactive Time Scrubber & Chart Mode Controls */}
+          <div className="mt-2.5 pt-2.5 border-t border-stone-800/90 flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2 flex-1 min-w-[200px]">
               <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <label
@@ -956,7 +1241,6 @@ export const ZmanimWidget: React.FC<ZmanimWidgetProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono tabular-nums text-stone-400">
-              <span>Daylight Elapsed: {solarMetrics.daylightProgressPct}%</span>
               {scrubProgress !== null && (
                 <button
                   type="button"

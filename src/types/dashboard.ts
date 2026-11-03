@@ -1,4 +1,5 @@
 export type ShitaOpinion = 'GRA' | 'MGA' | 'BAAL_HATANYA';
+export type AppLanguage = 'en' | 'fr' | 'es' | 'ru';
 
 export interface LocationConfig {
   id: string;

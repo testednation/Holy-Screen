@@ -12,6 +12,7 @@ import {
   Compass,
   GripVertical,
   MapPin,
+  Mic,
   Moon,
   PieChart,
   Plus,
@@ -69,6 +70,15 @@ import {
   PWAInstallButton,
   OfflineIndicator,
 } from './components/PWAInstallControl';
+import {
+  LanguageProvider,
+  useLanguage,
+  LanguageSwitcher,
+  localizeZmanimData,
+  localizeWeatherData,
+  localizeWidgetTitle,
+} from './components/LanguageControl';
+import { ZmanimProximityAlertControl } from './components/ZmanimProximityAlert';
 
 const DEFAULT_WIDGETS: WidgetInstance[] = [
   {
@@ -188,7 +198,16 @@ const DEFAULT_WIDGETS: WidgetInstance[] = [
 type NavViewFilter = 'all' | 'infographic' | 'zmanim' | 'torah' | 'shabbat';
 
 export default function App() {
+  return (
+    <LanguageProvider>
+      <OrahWorkspace />
+    </LanguageProvider>
+  );
+}
+
+function OrahWorkspace() {
   const prefersReducedMotion = useReducedMotion();
+  const { lang, t, locale } = useLanguage();
 
   // Theme state synced with <html class="dark">
   const [darkMode, setDarkMode] = useState<boolean>(() => {
@@ -288,9 +307,14 @@ export default function App() {
   const [geoLocating, setGeoLocating] = useState<boolean>(false);
 
   // Sefaria Reader Modal
-  const [readerRef, setReaderRef] = useState<{ ref: string | null; title: string }>({
+  const [readerRef, setReaderRef] = useState<{
+    ref: string | null;
+    title: string;
+    autoStartVoice?: boolean;
+  }>({
     ref: null,
     title: '',
+    autoStartVoice: false,
   });
 
   // Widgets Configuration
@@ -659,9 +683,18 @@ export default function App() {
     jumpToSpecificDate(nextMonthStart);
   };
 
-  const sunriseItem = zmanim.items.find((i) => i.id === 'sunrise');
-  const sunsetItem = zmanim.items.find((i) => i.id === 'sunset');
-  const shemaItem = zmanim.items.find(
+  const localizedZmanim = useMemo(
+    () => localizeZmanimData(zmanim, lang),
+    [zmanim, lang]
+  );
+  const localizedWeather = useMemo(
+    () => localizeWeatherData(weather, lang),
+    [weather, lang]
+  );
+
+  const sunriseItem = localizedZmanim.items.find((i) => i.id === 'sunrise');
+  const sunsetItem = localizedZmanim.items.find((i) => i.id === 'sunset');
+  const shemaItem = localizedZmanim.items.find(
     (i) => i.id === (shita === 'MGA' ? 'shema_mga' : 'shema_gra')
   );
 
@@ -689,10 +722,10 @@ export default function App() {
           >
             {(
               [
-                { id: 'all', label: 'Homescreen' },
-                { id: 'infographic', label: 'Infographic View' },
-                { id: 'zmanim', label: 'Zmanim & Sky' },
-                { id: 'torah', label: 'Parsha & Limud' },
+                { id: 'all', label: t.navHomescreen },
+                { id: 'infographic', label: t.navInfographic },
+                { id: 'zmanim', label: t.navZmanimSky },
+                { id: 'torah', label: t.navParshaLimud },
               ] as { id: NavViewFilter; label: string }[]
             ).map((item) => (
               <button
@@ -718,7 +751,7 @@ export default function App() {
               className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-stone-900 dark:bg-amber-600 dark:text-stone-950 rounded-lg hover:bg-stone-800 dark:hover:bg-amber-500 transition-colors whitespace-nowrap shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
-              Customize Widgets
+              {t.customizeWidgets}
             </button>
           </div>
         </div>
@@ -739,7 +772,7 @@ export default function App() {
                 <span>{todayHebrew.en}</span>
                 <span aria-hidden="true">·</span>
                 <span>
-                  {selectedDate.toLocaleDateString('en-US', {
+                  {selectedDate.toLocaleDateString(locale, {
                     weekday: 'long',
                     month: 'long',
                     day: 'numeric',
@@ -757,19 +790,19 @@ export default function App() {
               </div>
 
               <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-stone-900 dark:text-stone-100 mt-1 text-balance">
-                Daily Luach, Halachic Horizon & Study Sanctuary
+                {t.heroSubtitle}
               </h1>
             </div>
 
-            {/* Workspace Utility Controls: Date Picker, Location Selector, Layout Edit Toggle, Theme Switch */}
+            {/* Workspace Utility Controls: Date Picker, Location Selector, Zmanim Proximity Alerts, Language Switcher, Layout Edit Toggle, Theme Switch */}
             <div className="flex flex-wrap items-center gap-2.5 relative">
               {/* Header Date Picker & Time-Travel Control */}
               <div className="inline-flex items-center rounded-lg bg-white dark:bg-[#14161F] border border-stone-200/90 dark:border-stone-800 p-0.5">
                 <button
                   type="button"
                   onClick={() => shiftSelectedDateByDays(-1)}
-                  title="Previous Day"
-                  aria-label="Previous Day"
+                  title={t.previousDay}
+                  aria-label={t.previousDay}
                   className="p-1.5 rounded-md text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
@@ -791,11 +824,11 @@ export default function App() {
                   <Calendar className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
                   <span className="font-mono tabular-nums">
                     {isSelectedToday
-                      ? `Today · ${selectedDate.toLocaleDateString('en-US', {
+                      ? `${t.today} · ${selectedDate.toLocaleDateString(locale, {
                           month: 'short',
                           day: 'numeric',
                         })}`
-                      : selectedDate.toLocaleDateString('en-US', {
+                      : selectedDate.toLocaleDateString(locale, {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',
@@ -810,8 +843,8 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => shiftSelectedDateByDays(1)}
-                  title="Next Day"
-                  aria-label="Next Day"
+                  title={t.nextDay}
+                  aria-label={t.nextDay}
                   className="p-1.5 rounded-md text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
                 >
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -821,11 +854,11 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => jumpToSpecificDate(new Date())}
-                    title="Return to Today"
+                    title={t.returnToToday}
                     className="ml-0.5 px-2 py-1 text-[11px] font-medium rounded-md bg-amber-700 text-white dark:bg-amber-500 dark:text-stone-950 hover:bg-amber-800 dark:hover:bg-amber-400 transition-colors inline-flex items-center gap-1 whitespace-nowrap"
                   >
                     <RotateCcw className="w-3 h-3" />
-                    <span>Today</span>
+                    <span>{t.today}</span>
                   </button>
                 )}
               </div>
@@ -846,6 +879,35 @@ export default function App() {
                 </span>
               </button>
 
+              {/* Zmanim Proximity Alert System (15m Before Plag HaMincha, Shkiah, etc.) */}
+              <ZmanimProximityAlertControl
+                zmanim={localizedZmanim}
+                isSelectedToday={isSelectedToday}
+                lang={lang}
+              />
+
+              {/* Multi-Language Switcher (English, Français, Español, Русский) */}
+              <LanguageSwitcher />
+
+              {/* Sefaria Voice Search Launcher */}
+              <button
+                type="button"
+                onClick={() =>
+                  setReaderRef({
+                    ref: parsha?.fullRef || 'Berakhot 2a',
+                    title: parsha
+                      ? `${parsha.nameEn} · ${parsha.nameHe}`
+                      : 'Berakhot 2a · מסכת ברכות',
+                    autoStartVoice: true,
+                  })
+                }
+                title="Open Sefaria Reader with Voice-Controlled Search"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-white dark:bg-[#14161F] border border-stone-200/90 dark:border-stone-800 text-stone-800 dark:text-stone-200 hover:border-amber-600/60 transition-colors whitespace-nowrap shrink-0"
+              >
+                <Mic className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+                <span>Sefaria Voice Search</span>
+              </button>
+
               {/* Infographic View Toggle Button */}
               <button
                 type="button"
@@ -863,8 +925,8 @@ export default function App() {
                 <PieChart className="w-3.5 h-3.5 text-amber-600 dark:text-current" />
                 <span>
                   {navView === 'infographic'
-                    ? 'Exit Infographic'
-                    : 'Infographic View'}
+                    ? t.exitInfographic
+                    : t.navInfographic}
                 </span>
               </button>
 
@@ -880,7 +942,7 @@ export default function App() {
                   }`}
                 >
                   <SlidersHorizontal className="w-3.5 h-3.5" />
-                  {isCustomizingLayout ? 'Finish Editing Grid' : 'Edit Grid Layout'}
+                  {isCustomizingLayout ? t.finishEditingGrid : t.editGridLayout}
                 </button>
               )}
 
@@ -894,12 +956,12 @@ export default function App() {
                 {darkMode ? (
                   <>
                     <Sun className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Daylight</span>
+                    <span>{t.daylight}</span>
                   </>
                 ) : (
                   <>
                     <Moon className="w-3.5 h-3.5 text-stone-600" />
-                    <span>Nightfall</span>
+                    <span>{t.nightfall}</span>
                   </>
                 )}
               </button>
@@ -907,7 +969,7 @@ export default function App() {
               {/* Download / Install Offline App Control */}
               <PWAInstallButton
                 location={location}
-                zmanim={zmanim}
+                zmanim={localizedZmanim}
                 selectedDate={selectedDate}
                 parsha={parsha}
               />
@@ -1227,50 +1289,52 @@ export default function App() {
           <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="p-3.5 rounded-xl bg-white dark:bg-[#14161F] border border-stone-200/80 dark:border-stone-800">
               <div className="text-xs text-stone-500 dark:text-stone-400">
-                Sunrise (Netz HaChama)
+                {t.sunriseNetz}
               </div>
               <div className="text-lg font-mono tabular-nums font-semibold text-stone-900 dark:text-stone-100 mt-0.5">
                 {sunriseItem?.formattedTime || '—'}
               </div>
               <div className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5">
-                Latest Shema: {shemaItem?.formattedTime}
+                {t.latestShema}: {shemaItem?.formattedTime}
               </div>
             </div>
 
             <div className="p-3.5 rounded-xl bg-white dark:bg-[#14161F] border border-stone-200/80 dark:border-stone-800">
               <div className="text-xs text-stone-500 dark:text-stone-400">
-                Sunset (Shkiah)
+                {t.sunsetShkiah}
               </div>
               <div className="text-lg font-mono tabular-nums font-semibold text-stone-900 dark:text-stone-100 mt-0.5">
                 {sunsetItem?.formattedTime || '—'}
               </div>
               <div className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5">
-                Sha’ah Zmanit: {zmanim.shaahZmanitGraMinutes} min
+                {t.shaahZmanit}: {localizedZmanim.shaahZmanitGraMinutes} min
               </div>
             </div>
 
             <div className="p-3.5 rounded-xl bg-white dark:bg-[#14161F] border border-stone-200/80 dark:border-stone-800">
               <div className="text-xs text-stone-500 dark:text-stone-400">
-                Shabbat {parsha?.nameEn.replace('Parashat ', '') || 'Candles'}
+                {t.shabbatCandles} · {parsha?.nameEn.replace('Parashat ', '') || ''}
               </div>
               <div className="text-lg font-mono tabular-nums font-semibold text-stone-900 dark:text-stone-100 mt-0.5">
                 {parsha?.candleLighting || '—'}
               </div>
               <div className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5">
-                Havdalah: {parsha?.havdalah || '—'}
+                {t.havdalah}: {parsha?.havdalah || '—'}
               </div>
             </div>
 
             <div className="p-3.5 rounded-xl bg-white dark:bg-[#14161F] border border-stone-200/80 dark:border-stone-800">
               <div className="text-xs text-stone-500 dark:text-stone-400">
-                Atmospheric Conditions
+                {t.atmosphericConditions}
               </div>
               <div className="text-lg font-mono tabular-nums font-semibold text-stone-900 dark:text-stone-100 mt-0.5">
-                {weather ? `${weather.currentTempF}°F · ${weather.conditionText}` : 'Loading...'}
+                {localizedWeather
+                  ? `${localizedWeather.currentTempF}°F · ${localizedWeather.conditionText}`
+                  : t.loading}
               </div>
               <div className="text-[11px] text-stone-400 dark:text-stone-500 mt-0.5 font-mono tabular-nums">
-                {weather
-                  ? `High ${weather.highF}°F · Low ${weather.lowF}°F`
+                {localizedWeather
+                  ? `${t.high} ${localizedWeather.highF}°F · ${t.low} ${localizedWeather.lowF}°F`
                   : location.name}
               </div>
             </div>
@@ -1281,11 +1345,11 @@ export default function App() {
         <div className="flex md:hidden items-center gap-1.5 overflow-x-auto pb-4">
           {(
             [
-              { id: 'all', label: 'All Widgets' },
-              { id: 'infographic', label: 'Infographic View' },
-              { id: 'zmanim', label: 'Zmanim & Sky' },
-              { id: 'torah', label: 'Parsha & Limud' },
-              { id: 'shabbat', label: 'Shabbat & Chesed' },
+              { id: 'all', label: t.allWidgets },
+              { id: 'infographic', label: t.navInfographic },
+              { id: 'zmanim', label: t.navZmanimSky },
+              { id: 'torah', label: t.navParshaLimud },
+              { id: 'shabbat', label: t.shabbatChesed },
             ] as { id: NavViewFilter; label: string }[]
           ).map((tab) => (
             <button
@@ -1312,7 +1376,7 @@ export default function App() {
             transition={{ duration: 0.22 }}
           >
             <InfographicView
-              zmanim={zmanim}
+              zmanim={localizedZmanim}
               selectedDate={selectedDate}
               onChangeDate={jumpToSpecificDate}
               shita={shita}
@@ -1320,7 +1384,7 @@ export default function App() {
               location={location}
               parsha={parsha}
               limud={limud}
-              weather={weather}
+              weather={localizedWeather}
               onOpenReader={(ref, title) => setReaderRef({ ref, title })}
               onSwitchToBento={() => setNavView('all')}
             />
@@ -1492,7 +1556,14 @@ export default function App() {
                           >
                             <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-900 dark:text-amber-300">
                               <GripVertical className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
-                              <span>Drag to Reorder · {widget.title}</span>
+                              <span>
+                                {t.dragToReorder} ·{' '}
+                                {localizeWidgetTitle(
+                                  widget.type,
+                                  widget.title,
+                                  lang
+                                )}
+                              </span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               {([1, 2, 3] as WidgetSpan[]).map((sp) => (
@@ -1525,7 +1596,7 @@ export default function App() {
                       {/* Render Specific Widget Content */}
                       {widget.type === 'zmanim' && (
                         <ZmanimWidget
-                          zmanim={zmanim}
+                          zmanim={localizedZmanim}
                           selectedDate={selectedDate}
                           onChangeDate={setSelectedDate}
                           shita={shita}
@@ -1600,11 +1671,14 @@ export default function App() {
                       )}
 
                       {widget.type === 'daily_minyan' && (
-                        <DailyMinyanWidget zmanim={zmanim} />
+                        <DailyMinyanWidget zmanim={localizedZmanim} />
                       )}
 
-                      {widget.type === 'weather' && weather && (
-                        <WeatherWidget weather={weather} location={location} />
+                      {widget.type === 'weather' && localizedWeather && (
+                        <WeatherWidget
+                          weather={localizedWeather}
+                          location={location}
+                        />
                       )}
 
                       {widget.type === 'parsha' && parsha && (
@@ -1620,7 +1694,7 @@ export default function App() {
                       {widget.type === 'limud' && (
                         <LimudWidget
                           limud={limud}
-                          dateStr={zmanim.dateStr}
+                          dateStr={localizedZmanim.dateStr}
                           onOpenReader={(ref, title) =>
                             setReaderRef({ ref, title })
                           }
@@ -1682,7 +1756,13 @@ export default function App() {
       <SefariaReaderModal
         refString={readerRef.ref}
         title={readerRef.title}
-        onClose={() => setReaderRef({ ref: null, title: '' })}
+        autoStartVoice={readerRef.autoStartVoice}
+        onNavigateRef={(newRef, newTitle) =>
+          setReaderRef({ ref: newRef, title: newTitle, autoStartVoice: false })
+        }
+        onClose={() =>
+          setReaderRef({ ref: null, title: '', autoStartVoice: false })
+        }
       />
 
       {/* Widget Gallery & Custom Widget Studio Modal */}
