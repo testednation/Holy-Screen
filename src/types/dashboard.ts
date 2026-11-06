@@ -221,10 +221,136 @@ export interface DailyTehillimData {
   themeSummary: string;
 }
 
+export type RambamCycleTrack = 'three_chapters' | 'one_chapter' | 'sefer_hamitzvot';
+
+export interface SeferHamitzvotItem {
+  id: string;
+  type: 'aseh' | 'lo_taaseh';
+  mitzvahNum: number;
+  labelEn: string;
+  labelHe: string;
+  summary: string;
+  biblicalSource: string;
+  sefariaRef: string;
+}
+
+export interface RambamDailyData {
+  hebrewDateEn: string;
+  hebrewDateHe: string;
+  activeTrack: RambamCycleTrack;
+  threeChaptersTitleEn: string;
+  threeChaptersTitleHe: string;
+  threeChaptersRef: string;
+  threeChaptersSummary: string;
+  oneChapterTitleEn: string;
+  oneChapterTitleHe: string;
+  oneChapterRef: string;
+  oneChapterSummary: string;
+  seferHamitzvotRef: string;
+  seferHamitzvotSummary: string;
+  seferHamitzvotItems: SeferHamitzvotItem[];
+  cycleInfo: string;
+}
+
+export interface GeulahMoshiachEntry {
+  id: string;
+  hebrewDateDisplayEn: string;
+  hebrewDateDisplayHe: string;
+  themeTitleEn: string;
+  themeTitleHe: string;
+  propheticQuoteHe: string;
+  propheticQuoteEn: string;
+  propheticSourceEn: string;
+  propheticSourceHe: string;
+  propheticSefariaRef: string;
+  rambamHalachaHe: string;
+  rambamHalachaEn: string;
+  rambamSourceEn: string;
+  rambamSourceHe: string;
+  rambamSefariaRef: string;
+  sichotDvarTorah: string;
+  dailyMeditation: string;
+}
+
+export interface ChayenuSectionItem {
+  id:
+    | 'chumash'
+    | 'tehillim'
+    | 'tanya'
+    | 'rambam'
+    | 'hayom_yom'
+    | 'geulah'
+    | 'halacha'
+    | 'living_times'
+    | 'haftarah';
+  badge: string;
+  titleEn: string;
+  titleHe: string;
+  subtitleEn: string;
+  subtitleHe: string;
+  sefariaRef: string;
+  quoteHe?: string;
+  quoteEn?: string;
+  summaryEn: string;
+  summaryHe?: string;
+  practicalAvodah?: string;
+}
+
+export interface ChayenuDailyPackage {
+  dateStr: string;
+  hebrewDateEn: string;
+  hebrewDateHe: string;
+  parshaNameEn: string;
+  parshaNameHe: string;
+  dayOfWeekHebrewName: string;
+  aliyahLabelEn: string;
+  sections: ChayenuSectionItem[];
+  livingWithTimesEssay: {
+    titleEn: string;
+    titleHe: string;
+    parshaEn: string;
+    coreIdea: string;
+    chassidicInsight: string;
+    application: string;
+    sefariaRef: string;
+  };
+  dailyHalachaSnippet: {
+    titleEn: string;
+    titleHe: string;
+    topic: string;
+    ruleEn: string;
+    sourceEn: string;
+    sefariaRef: string;
+  };
+}
+
+export interface ShiurClassItem {
+  id: string;
+  title: string;
+  hebrewTitle?: string;
+  category: 'gemara' | 'chumash' | 'halacha' | 'chassidut' | 'mishnah' | 'custom';
+  maggidShiur?: string; // Speaker / Rabbi
+  durationMinutes: number;
+  sefariaRef?: string;
+  isCustom?: boolean;
+  notes?: string;
+}
+
+export interface DailyShiurLogEntry {
+  shiurId: string;
+  completed: boolean;
+  completedAt?: string;
+  notes?: string;
+}
+
 export type BuiltinWidgetType =
   | 'zmanim'
   | 'mini_calendar'
   | 'upcoming_holidays'
+  | 'chayenu_daily'
+  | 'rambam_daily'
+  | 'geulah_moshiach'
+  | 'shiurim_tracker'
   | 'hayom_yom'
   | 'daily_tehillim'
   | 'daf_yomi'

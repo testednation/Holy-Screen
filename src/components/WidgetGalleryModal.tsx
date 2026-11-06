@@ -1,9 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
+  AnimatePresence,
+  LayoutGroup,
+  motion,
+  useReducedMotion,
+} from 'motion/react';
+import {
+  ArrowDown,
+  ArrowUp,
   Check,
+  Download,
   GripVertical,
   LayoutGrid,
   Plus,
+  Settings,
   Trash2,
   X,
 } from 'lucide-react';
@@ -19,6 +29,7 @@ interface WidgetGalleryModalProps {
   onAddCustomWidget: (widget: WidgetInstance) => void;
   onDeleteCustomWidget: (id: string) => void;
   onApplyPreset: (preset: 'complete' | 'focused' | 'shabbat') => void;
+  onOpenSettings?: () => void;
 }
 
 const WIDGET_DESCRIPTIONS: Record<string, string> = {
@@ -28,6 +39,14 @@ const WIDGET_DESCRIPTIONS: Record<string, string> = {
     'Interactive Hebrew month Luach displaying Hebrew Gematria & Gregorian dates; click any date to sync Zmanim, Parsha, and Limud.',
   upcoming_holidays:
     'Countdown to the next major Jewish festival with remaining days, Hebrew & Gregorian dates, Erev sunset time, and Mitzvot summary.',
+  chayenu_daily:
+    'Comprehensive daily study companion from chayenu.org featuring Chumash with Rashi, Daily Tehillim, Tanya, Rambam, Hayom Yom, Geulah & Moshiach, Halachah, and Living with the Times.',
+  rambam_daily:
+    'Maimonides Daily Study tracker featuring the 3-Chapters-a-Day, 1-Chapter-a-Day, and Sefer HaMitzvot tracks with positive & negative commandment details and direct Sefaria Reader links.',
+  geulah_moshiach:
+    'Chayenu’s signature daily Inyanei Geulah U’Moshiach study section featuring prophetic passages, Rambam Hilchot Melachim (Ch. 11-12), and Chassidic reflections on the Messianic Era.',
+  shiurim_tracker:
+    'Daily Torah class log & progress tracker across Gemara, Chumash, Halacha, Chassidut, and custom chaburot with duration and learning streak.',
   hayom_yom:
     'Daily Chabad Chassidic almanac (לוח היום יום) compiled by the Lubavitcher Rebbe with daily Tehillim chapters, Tanya portion, and bilingual aphorism.',
   daily_tehillim:
@@ -66,10 +85,13 @@ export const WidgetGalleryModal: React.FC<WidgetGalleryModalProps> = ({
   onAddCustomWidget,
   onDeleteCustomWidget,
   onApplyPreset,
+  onOpenSettings,
 }) => {
+  const prefersReducedMotion = useReducedMotion();
   const [tab, setTab] = useState<'catalog' | 'create'>('catalog');
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const lastReorderRef = useRef<number>(0);
   const [customTitle, setCustomTitle] = useState('');
   const [customSubType, setCustomSubType] = useState<'checklist' | 'countdown' | 'links'>(
     'checklist'
@@ -176,6 +198,19 @@ export const WidgetGalleryModal: React.FC<WidgetGalleryModalProps> = ({
               >
                 + Create Custom Widget
               </button>
+              {onOpenSettings && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenSettings();
+                  }}
+                  className="px-3 py-1 text-xs font-medium rounded-md text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 transition-colors whitespace-nowrap shrink-0 inline-flex items-center gap-1"
+                >
+                  <Download className="w-3 h-3" />
+                  <span>Export / Import</span>
+                </button>
+              )}
             </div>
 
             <button
@@ -223,118 +258,208 @@ export const WidgetGalleryModal: React.FC<WidgetGalleryModalProps> = ({
                 </div>
               </div>
 
-              {/* Widget List (Drag and Drop Reorderable) */}
-              <div className="divide-y divide-stone-200/70 dark:divide-stone-800">
-                {widgets.map((w) => {
-                  const isBeingDragged = draggedId === w.id;
-                  const isDragTarget = dragOverId === w.id && draggedId !== w.id;
+              {/* Widget List (Drag and Drop Reorderable with LayoutGroup) */}
+              <LayoutGroup id="widget-gallery-reorder-list">
+                <motion.div
+                  layout
+                  className="divide-y divide-stone-200/70 dark:divide-stone-800"
+                >
+                  <AnimatePresence initial={false}>
+                    {widgets.map((w, idx) => {
+                      const isBeingDragged = draggedId === w.id;
+                      const isDragTarget =
+                        dragOverId === w.id && draggedId !== w.id;
+                      const canMoveUp = idx > 0;
+                      const canMoveDown = idx < widgets.length - 1;
 
-                  return (
-                    <div
-                      key={w.id}
-                      draggable
-                      onDragStart={(e) => {
-                        setDraggedId(w.id);
-                        e.dataTransfer.effectAllowed = 'move';
-                        e.dataTransfer.setData('text/plain', w.id);
-                      }}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.dataTransfer.dropEffect = 'move';
-                        if (draggedId && draggedId !== w.id) {
-                          setDragOverId(w.id);
-                          onReorderWidgets(draggedId, w.id);
-                        }
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        const sourceId = draggedId || e.dataTransfer.getData('text/plain');
-                        if (sourceId && sourceId !== w.id) {
-                          onReorderWidgets(sourceId, w.id);
-                        }
-                        setDraggedId(null);
-                        setDragOverId(null);
-                      }}
-                      onDragEnd={() => {
-                        setDraggedId(null);
-                        setDragOverId(null);
-                      }}
-                      className={`py-3.5 px-2 -mx-2 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all cursor-grab active:cursor-grabbing ${
-                        isBeingDragged
-                          ? 'opacity-50 bg-amber-50/70 dark:bg-amber-950/30 ring-1 ring-amber-500/50'
-                          : isDragTarget
-                          ? 'bg-stone-100/80 dark:bg-stone-800/60'
-                          : 'hover:bg-stone-50/80 dark:hover:bg-stone-800/30'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2.5 min-w-0">
-                        <div
-                          className="mt-0.5 p-0.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-grab active:cursor-grabbing shrink-0"
-                          title="Drag to reorder widget"
-                        >
-                          <GripVertical className="w-4 h-4" />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => onToggleWidget(w.id)}
-                          className={`mt-0.5 w-5 h-5 rounded-md flex items-center justify-center border transition-colors shrink-0 ${
-                            w.visible
-                              ? 'bg-amber-700 border-amber-700 text-white dark:bg-amber-500 dark:border-amber-500 dark:text-stone-950'
-                              : 'border-stone-300 dark:border-stone-700'
+                      return (
+                        <motion.div
+                          key={w.id}
+                          layout
+                          layoutId={`gallery-widget-row-${w.id}`}
+                          draggable
+                          onDragStart={(e) => {
+                            setDraggedId(w.id);
+                            lastReorderRef.current = Date.now();
+                            const dt = (
+                              e as unknown as React.DragEvent<HTMLElement>
+                            ).dataTransfer;
+                            if (dt) {
+                              dt.effectAllowed = 'move';
+                              dt.setData('text/plain', w.id);
+                            }
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            const dt = (
+                              e as unknown as React.DragEvent<HTMLElement>
+                            ).dataTransfer;
+                            if (dt) {
+                              dt.dropEffect = 'move';
+                            }
+                            if (draggedId && draggedId !== w.id) {
+                              setDragOverId(w.id);
+                              const now = Date.now();
+                              if (now - lastReorderRef.current > 140) {
+                                lastReorderRef.current = now;
+                                onReorderWidgets(draggedId, w.id);
+                              }
+                            }
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            const dt = (
+                              e as unknown as React.DragEvent<HTMLElement>
+                            ).dataTransfer;
+                            const sourceId =
+                              draggedId || (dt ? dt.getData('text/plain') : '');
+                            if (sourceId && sourceId !== w.id) {
+                              onReorderWidgets(sourceId, w.id);
+                            }
+                            setDraggedId(null);
+                            setDragOverId(null);
+                          }}
+                          onDragEnd={() => {
+                            setDraggedId(null);
+                            setDragOverId(null);
+                          }}
+                          transition={
+                            prefersReducedMotion
+                              ? { duration: 0 }
+                              : {
+                                  layout: {
+                                    type: 'spring',
+                                    stiffness: 380,
+                                    damping: 32,
+                                    mass: 0.8,
+                                  },
+                                }
+                          }
+                          className={`py-3.5 px-2 -mx-2 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors cursor-grab active:cursor-grabbing ${
+                            isBeingDragged
+                              ? 'opacity-60 bg-amber-50/70 dark:bg-amber-950/30 ring-1 ring-amber-500/50 z-10'
+                              : isDragTarget
+                              ? 'bg-stone-100/80 dark:bg-stone-800/60'
+                              : 'hover:bg-stone-50/80 dark:hover:bg-stone-800/30'
                           }`}
-                          aria-label={`Toggle ${w.title}`}
                         >
-                          {w.visible && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                        </button>
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold text-stone-900 dark:text-stone-100">
-                            {w.title}
-                          </div>
-                          <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                            {WIDGET_DESCRIPTIONS[w.type] ||
-                              w.subtitle ||
-                              'Custom user-configured homescreen widget.'}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Width Span & Delete Controls */}
-                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                        <div
-                          className="flex items-center p-0.5 rounded-lg bg-stone-100 dark:bg-stone-800 border border-stone-200/70 dark:border-stone-700"
-                          title="Widget Width Span (Desktop 3-Column Grid)"
-                        >
-                          {([1, 2, 3] as WidgetSpan[]).map((sp) => (
-                            <button
-                              key={sp}
-                              type="button"
-                              onClick={() => onChangeSpan(w.id, sp)}
-                              className={`px-2 py-0.5 text-[11px] font-mono rounded-md transition-colors whitespace-nowrap shrink-0 ${
-                                w.span === sp
-                                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs font-semibold'
-                                  : 'text-stone-500 dark:text-stone-400'
-                              }`}
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <div
+                              className="mt-0.5 p-0.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-grab active:cursor-grabbing shrink-0"
+                              title="Drag to reorder widget"
                             >
-                              {sp}col
+                              <GripVertical className="w-4 h-4" />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onToggleWidget(w.id)}
+                              className={`mt-0.5 w-5 h-5 rounded-md flex items-center justify-center border transition-colors shrink-0 ${
+                                w.visible
+                                  ? 'bg-amber-700 border-amber-700 text-white dark:bg-amber-500 dark:border-amber-500 dark:text-stone-950'
+                                  : 'border-stone-300 dark:border-stone-700'
+                              }`}
+                              aria-label={`Toggle ${w.title}`}
+                            >
+                              {w.visible && (
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              )}
                             </button>
-                          ))}
-                        </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+                                {w.title}
+                              </div>
+                              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                                {WIDGET_DESCRIPTIONS[w.type] ||
+                                  w.subtitle ||
+                                  'Custom user-configured homescreen widget.'}
+                              </p>
+                            </div>
+                          </div>
 
-                        {w.type === 'custom' && (
-                          <button
-                            type="button"
-                            onClick={() => onDeleteCustomWidget(w.id)}
-                            className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/50 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                            title="Delete custom widget"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                          {/* Reorder Arrows, Width Span & Delete Controls */}
+                          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                            <div className="flex items-center p-0.5 rounded-lg bg-stone-100 dark:bg-stone-800 border border-stone-200/70 dark:border-stone-700">
+                              <button
+                                type="button"
+                                disabled={!canMoveUp}
+                                onClick={() =>
+                                  canMoveUp &&
+                                  onReorderWidgets(w.id, widgets[idx - 1].id)
+                                }
+                                title="Move up"
+                                aria-label={`Move ${w.title} up`}
+                                className="p-1 rounded-md text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                              >
+                                <ArrowUp className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!canMoveDown}
+                                onClick={() =>
+                                  canMoveDown &&
+                                  onReorderWidgets(w.id, widgets[idx + 1].id)
+                                }
+                                title="Move down"
+                                aria-label={`Move ${w.title} down`}
+                                className="p-1 rounded-md text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                              >
+                                <ArrowDown className="w-3 h-3" />
+                              </button>
+                            </div>
+
+                            <div
+                              className="flex items-center p-0.5 rounded-lg bg-stone-100 dark:bg-stone-800 border border-stone-200/70 dark:border-stone-700"
+                              title="Widget Width Span (Desktop 3-Column Grid)"
+                            >
+                              {([1, 2, 3] as WidgetSpan[]).map((sp) => {
+                                const isSelected = w.span === sp;
+                                return (
+                                  <button
+                                    key={sp}
+                                    type="button"
+                                    onClick={() => onChangeSpan(w.id, sp)}
+                                    className={`relative px-2 py-0.5 text-[11px] font-mono rounded-md transition-colors whitespace-nowrap shrink-0 ${
+                                      isSelected
+                                        ? 'text-stone-900 dark:text-stone-100 font-semibold'
+                                        : 'text-stone-500 dark:text-stone-400'
+                                    }`}
+                                  >
+                                    {isSelected && (
+                                      <motion.span
+                                        layoutId={`gallery-span-pill-${w.id}`}
+                                        transition={{
+                                          type: 'spring',
+                                          stiffness: 420,
+                                          damping: 32,
+                                        }}
+                                        className="absolute inset-0 rounded-md bg-white dark:bg-stone-900 shadow-xs"
+                                      />
+                                    )}
+                                    <span className="relative z-10">
+                                      {sp}col
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {w.type === 'custom' && (
+                              <button
+                                type="button"
+                                onClick={() => onDeleteCustomWidget(w.id)}
+                                className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/50 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                                title="Delete custom widget"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </motion.div>
+              </LayoutGroup>
             </div>
           ) : (
             <form onSubmit={handleCreateCustom} className="space-y-4 max-w-xl">

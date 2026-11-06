@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   AnimatePresence,
   LayoutGroup,
@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Compass,
   GripVertical,
+  HelpCircle,
   MapPin,
   Mic,
   Moon,
@@ -18,6 +19,7 @@ import {
   Plus,
   RotateCcw,
   Search,
+  Settings,
   SlidersHorizontal,
   Sun,
   X,
@@ -56,6 +58,10 @@ import { DailyMinyanWidget } from './components/widgets/DailyMinyanWidget';
 import { WeatherWidget } from './components/widgets/WeatherWidget';
 import { ParshaWidget } from './components/widgets/ParshaWidget';
 import { LimudWidget } from './components/widgets/LimudWidget';
+import { ChayenuDailyWidget } from './components/widgets/ChayenuDailyWidget';
+import { ShiurimTrackerWidget } from './components/widgets/ShiurimTrackerWidget';
+import { RambamDailyWidget } from './components/widgets/RambamDailyWidget';
+import { GeulahMoshiachWidget } from './components/widgets/GeulahMoshiachWidget';
 import {
   ShabbatPrepWidget,
   TzedakahWidget,
@@ -65,6 +71,7 @@ import {
 } from './components/widgets/ExtraWidgets';
 import { SefariaReaderModal } from './components/SefariaReaderModal';
 import { WidgetGalleryModal } from './components/WidgetGalleryModal';
+import { SettingsModal, OrahExportPackage } from './components/SettingsModal';
 import { InfographicView } from './components/InfographicView';
 import {
   PWAInstallButton,
@@ -79,6 +86,10 @@ import {
   localizeWidgetTitle,
 } from './components/LanguageControl';
 import { ZmanimProximityAlertControl } from './components/ZmanimProximityAlert';
+import {
+  OnboardingTutorialModal,
+  TUTORIAL_STORAGE_KEY,
+} from './components/OnboardingTutorialModal';
 
 const DEFAULT_WIDGETS: WidgetInstance[] = [
   {
@@ -99,6 +110,34 @@ const DEFAULT_WIDGETS: WidgetInstance[] = [
     id: 'w-upcoming-holidays',
     type: 'upcoming_holidays',
     title: 'Upcoming Holidays · Festival Countdown',
+    span: 1,
+    visible: true,
+  },
+  {
+    id: 'w-chayenu-daily',
+    type: 'chayenu_daily',
+    title: 'Chayenu: Daily Study Companion (chayenu.org)',
+    span: 2,
+    visible: true,
+  },
+  {
+    id: 'w-shiurim-tracker',
+    type: 'shiurim_tracker',
+    title: 'Shiurim Tracker · מעקב שיעורים יומי',
+    span: 1,
+    visible: true,
+  },
+  {
+    id: 'w-rambam-daily',
+    type: 'rambam_daily',
+    title: 'Rambam Daily Study · Mishneh Torah & Sefer HaMitzvot',
+    span: 1,
+    visible: true,
+  },
+  {
+    id: 'w-geulah-moshiach',
+    type: 'geulah_moshiach',
+    title: 'Geulah & Moshiach · ענייני גאולה ומשיח',
     span: 1,
     visible: true,
   },
@@ -207,7 +246,7 @@ export default function App() {
 
 function OrahWorkspace() {
   const prefersReducedMotion = useReducedMotion();
-  const { lang, t, locale } = useLanguage();
+  const { lang, setLang, t, locale } = useLanguage();
 
   // Theme state synced with <html class="dark">
   const [darkMode, setDarkMode] = useState<boolean>(() => {
@@ -292,9 +331,28 @@ function OrahWorkspace() {
   const [navView, setNavView] = useState<NavViewFilter>('all');
   const [isCustomizingLayout, setIsCustomizingLayout] = useState<boolean>(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState<boolean>(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isTutorialOpen, setIsTutorialOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(TUTORIAL_STORAGE_KEY) !== 'true';
+    } catch {
+      return true;
+    }
+  });
+
+  const handleCloseTutorial = () => {
+    setIsTutorialOpen(false);
+    try {
+      localStorage.setItem(TUTORIAL_STORAGE_KEY, 'true');
+    } catch {
+      // ignore
+    }
+  };
   const [draggedWidgetId, setDraggedWidgetId] = useState<string | null>(null);
   const [dragOverWidgetId, setDragOverWidgetId] = useState<string | null>(null);
   const [dragHandleArmedId, setDragHandleArmedId] = useState<string | null>(null);
+  const [recentlyMovedWidgetId, setRecentlyMovedWidgetId] = useState<string | null>(null);
+  const lastReorderTimeRef = useRef<number>(0);
 
   // Location & Date Picker Popovers
   const [isLocationPickerOpen, setIsLocationPickerOpen] = useState<boolean>(false);
@@ -405,6 +463,52 @@ function OrahWorkspace() {
               tehillimDefault
             );
           }
+          if (!nextList.some((w) => w.type === 'chayenu_daily')) {
+            const chayenuDefault = DEFAULT_WIDGETS.find(
+              (w) => w.type === 'chayenu_daily'
+            )!;
+            const holIdx = nextList.findIndex(
+              (w) => w.type === 'upcoming_holidays'
+            );
+            nextList.splice(
+              holIdx >= 0 ? holIdx + 1 : 3,
+              0,
+              chayenuDefault
+            );
+          }
+          if (!nextList.some((w) => w.type === 'rambam_daily')) {
+            const rambamDefault = DEFAULT_WIDGETS.find(
+              (w) => w.type === 'rambam_daily'
+            )!;
+            const chIdx = nextList.findIndex((w) => w.type === 'chayenu_daily');
+            nextList.splice(
+              chIdx >= 0 ? chIdx + 1 : 4,
+              0,
+              rambamDefault
+            );
+          }
+          if (!nextList.some((w) => w.type === 'geulah_moshiach')) {
+            const geulahDefault = DEFAULT_WIDGETS.find(
+              (w) => w.type === 'geulah_moshiach'
+            )!;
+            const rmIdx = nextList.findIndex((w) => w.type === 'rambam_daily');
+            nextList.splice(
+              rmIdx >= 0 ? rmIdx + 1 : 5,
+              0,
+              geulahDefault
+            );
+          }
+          if (!nextList.some((w) => w.type === 'shiurim_tracker')) {
+            const shiurimDefault = DEFAULT_WIDGETS.find(
+              (w) => w.type === 'shiurim_tracker'
+            )!;
+            const chIdx = nextList.findIndex((w) => w.type === 'chayenu_daily');
+            nextList.splice(
+              chIdx >= 0 ? chIdx + 1 : 5,
+              0,
+              shiurimDefault
+            );
+          }
           return nextList;
         }
       }
@@ -504,11 +608,13 @@ function OrahWorkspace() {
   };
 
   const changeWidgetSpan = (id: string, span: WidgetSpan) => {
+    setRecentlyMovedWidgetId(id);
     setWidgets((prev) => prev.map((w) => (w.id === id ? { ...w, span } : w)));
   };
 
   const reorderWidgets = (draggedId: string, targetId: string) => {
     if (!draggedId || !targetId || draggedId === targetId) return;
+    setRecentlyMovedWidgetId(draggedId);
     setWidgets((prev) => {
       const fromIndex = prev.findIndex((w) => w.id === draggedId);
       const toIndex = prev.findIndex((w) => w.id === targetId);
@@ -519,6 +625,26 @@ function OrahWorkspace() {
       return copy;
     });
   };
+
+  const moveWidgetByStep = (
+    widgetId: string,
+    direction: -1 | 1,
+    visibleList: WidgetInstance[]
+  ) => {
+    const currentIdxInVisible = visibleList.findIndex((w) => w.id === widgetId);
+    if (currentIdxInVisible < 0) return;
+    const neighbor = visibleList[currentIdxInVisible + direction];
+    if (!neighbor) return;
+    reorderWidgets(widgetId, neighbor.id);
+  };
+
+  useEffect(() => {
+    if (!recentlyMovedWidgetId) return;
+    const timer = window.setTimeout(() => {
+      setRecentlyMovedWidgetId(null);
+    }, 650);
+    return () => window.clearTimeout(timer);
+  }, [recentlyMovedWidgetId]);
 
   const addCustomWidget = (newWidget: WidgetInstance) => {
     setWidgets((prev) => [...prev, newWidget]);
@@ -532,6 +658,84 @@ function OrahWorkspace() {
     setWidgets((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
   };
 
+  const handleApplyImport = (importedPackage: OrahExportPackage) => {
+    if (
+      Array.isArray(importedPackage.widgets) &&
+      importedPackage.widgets.length > 0
+    ) {
+      setWidgets(importedPackage.widgets);
+      try {
+        localStorage.setItem(
+          'orah_widgets_v1',
+          JSON.stringify(importedPackage.widgets)
+        );
+      } catch {
+        // ignore
+      }
+    }
+    if (importedPackage.preferences) {
+      const pref = importedPackage.preferences;
+      if (pref.location) {
+        setLocation(pref.location);
+        try {
+          localStorage.setItem('orah_location', JSON.stringify(pref.location));
+        } catch {
+          // ignore
+        }
+      }
+      if (pref.shita) {
+        setShita(pref.shita);
+        try {
+          localStorage.setItem('orah_shita', pref.shita);
+        } catch {
+          // ignore
+        }
+      }
+      if (pref.theme) {
+        setDarkMode(pref.theme === 'dark');
+        try {
+          localStorage.setItem('orah_theme', pref.theme);
+        } catch {
+          // ignore
+        }
+      }
+      if (pref.language) {
+        setLang(pref.language);
+        try {
+          localStorage.setItem('orah_lang', pref.language);
+        } catch {
+          // ignore
+        }
+      }
+      if (pref.proximityAlerts) {
+        try {
+          localStorage.setItem(
+            'orah_proximity_alerts_v1',
+            JSON.stringify(pref.proximityAlerts)
+          );
+        } catch {
+          // ignore
+        }
+      }
+      if (pref.kavanotText) {
+        try {
+          localStorage.setItem('orah_kavanot_text', pref.kavanotText);
+        } catch {
+          // ignore
+        }
+      }
+    }
+  };
+
+  const handleResetDefaults = () => {
+    setWidgets(DEFAULT_WIDGETS);
+    try {
+      localStorage.setItem('orah_widgets_v1', JSON.stringify(DEFAULT_WIDGETS));
+    } catch {
+      // ignore
+    }
+  };
+
   const applyPreset = (preset: 'complete' | 'focused' | 'shabbat') => {
     if (preset === 'complete') {
       setWidgets((prev) => prev.map((w) => ({ ...w, visible: true })));
@@ -543,6 +747,10 @@ function OrahWorkspace() {
             'zmanim',
             'mini_calendar',
             'upcoming_holidays',
+            'chayenu_daily',
+            'shiurim_tracker',
+            'rambam_daily',
+            'geulah_moshiach',
             'hayom_yom',
             'daily_tehillim',
             'daf_yomi',
@@ -563,6 +771,8 @@ function OrahWorkspace() {
             'zmanim',
             'mini_calendar',
             'upcoming_holidays',
+            'chayenu_daily',
+            'geulah_moshiach',
             'hayom_yom',
             'daily_tehillim',
             'daily_thought',
@@ -600,6 +810,10 @@ function OrahWorkspace() {
         [
           'mini_calendar',
           'upcoming_holidays',
+          'chayenu_daily',
+          'shiurim_tracker',
+          'rambam_daily',
+          'geulah_moshiach',
           'hayom_yom',
           'daily_tehillim',
           'daf_yomi',
@@ -615,6 +829,8 @@ function OrahWorkspace() {
         [
           'mini_calendar',
           'upcoming_holidays',
+          'chayenu_daily',
+          'geulah_moshiach',
           'hayom_yom',
           'daily_tehillim',
           'daily_thought',
@@ -964,6 +1180,30 @@ function OrahWorkspace() {
                     <span>{t.nightfall}</span>
                   </>
                 )}
+              </button>
+
+              {/* Settings & Export/Import Configuration */}
+              <button
+                type="button"
+                onClick={() => setIsSettingsOpen(true)}
+                title="Workspace Settings & Export/Import Configuration"
+                aria-label="Workspace Settings & Export/Import Configuration"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-white dark:bg-[#14161F] border border-stone-200/90 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:border-amber-600/60 transition-colors whitespace-nowrap shrink-0"
+              >
+                <Settings className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+                <span>Settings</span>
+              </button>
+
+              {/* Welcome Guide / Interactive Tutorial Launcher */}
+              <button
+                type="button"
+                onClick={() => setIsTutorialOpen(true)}
+                title="Open Interactive Welcome Tutorial"
+                aria-label="Open Interactive Welcome Tutorial"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-white dark:bg-[#14161F] border border-stone-200/90 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:border-amber-600/60 transition-colors whitespace-nowrap shrink-0"
+              >
+                <HelpCircle className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+                <span>Guide</span>
               </button>
 
               {/* Download / Install Offline App Control */}
@@ -1390,7 +1630,7 @@ function OrahWorkspace() {
             />
           </motion.div>
         ) : (
-        <LayoutGroup>
+        <LayoutGroup id="orah-dashboard-bento-grid">
           {displayedWidgets.length === 0 ? (
             <motion.div
               layout
@@ -1417,10 +1657,22 @@ function OrahWorkspace() {
           ) : (
             <motion.div
               layout
+              transition={
+                prefersReducedMotion
+                  ? { duration: 0 }
+                  : {
+                      layout: {
+                        type: 'spring',
+                        stiffness: 350,
+                        damping: 30,
+                        mass: 0.85,
+                      },
+                    }
+              }
               className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-stretch"
             >
               <AnimatePresence mode="popLayout">
-                {displayedWidgets.map((widget) => {
+                {displayedWidgets.map((widget, widgetIndex) => {
                   const colSpanClass =
                     widget.span === 3
                       ? 'lg:col-span-3'
@@ -1433,11 +1685,15 @@ function OrahWorkspace() {
                     dragOverWidgetId === widget.id &&
                     draggedWidgetId !== null &&
                     draggedWidgetId !== widget.id;
+                  const isRecentlyMoved = recentlyMovedWidgetId === widget.id;
+                  const canMovePrev = widgetIndex > 0;
+                  const canMoveNext = widgetIndex < displayedWidgets.length - 1;
 
                   return (
                     <motion.section
                       key={widget.id}
                       layout
+                      layoutId={`dashboard-widget-${widget.id}`}
                       draggable={
                         isCustomizingLayout || dragHandleArmedId === widget.id
                       }
@@ -1451,6 +1707,7 @@ function OrahWorkspace() {
                           return;
                         }
                         setDraggedWidgetId(widget.id);
+                        lastReorderTimeRef.current = Date.now();
                         const dt = (e as unknown as React.DragEvent<HTMLElement>)
                           .dataTransfer;
                         if (dt) {
@@ -1467,7 +1724,11 @@ function OrahWorkspace() {
                         }
                         if (draggedWidgetId && draggedWidgetId !== widget.id) {
                           setDragOverWidgetId(widget.id);
-                          reorderWidgets(draggedWidgetId, widget.id);
+                          const now = Date.now();
+                          if (now - lastReorderTimeRef.current > 150) {
+                            lastReorderTimeRef.current = now;
+                            reorderWidgets(draggedWidgetId, widget.id);
+                          }
                         }
                       }}
                       onDrop={(e) => {
@@ -1491,13 +1752,23 @@ function OrahWorkspace() {
                       initial={
                         prefersReducedMotion
                           ? false
-                          : { opacity: 0, scale: 0.97, y: 10 }
+                          : { opacity: 0, scale: 0.96, y: 12 }
                       }
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      animate={{
+                        opacity: 1,
+                        scale: prefersReducedMotion
+                          ? 1
+                          : isBeingDragged
+                          ? 0.985
+                          : isDragTarget
+                          ? 1.01
+                          : 1,
+                        y: 0,
+                      }}
                       exit={
                         prefersReducedMotion
                           ? { opacity: 0 }
-                          : { opacity: 0, scale: 0.96, y: -8 }
+                          : { opacity: 0, scale: 0.95, y: -10 }
                       }
                       transition={
                         prefersReducedMotion
@@ -1505,36 +1776,69 @@ function OrahWorkspace() {
                           : {
                               layout: {
                                 type: 'spring',
-                                stiffness: 380,
+                                stiffness: 360,
                                 damping: 32,
+                                mass: 0.85,
                               },
-                              opacity: { duration: 0.18 },
-                              scale: { duration: 0.18 },
-                              y: { duration: 0.18 },
+                              opacity: { duration: 0.2 },
+                              scale: {
+                                type: 'spring',
+                                stiffness: 420,
+                                damping: 28,
+                              },
+                              y: { duration: 0.2 },
                             }
                       }
-                      className={`${colSpanClass} group/widget rounded-2xl bg-white dark:bg-[#14161F] border p-5 flex flex-col justify-between transition-shadow relative ${
+                      className={`${colSpanClass} group/widget rounded-2xl bg-white dark:bg-[#14161F] border p-5 flex flex-col justify-between transition-[box-shadow,border-color] duration-200 relative ${
                         isBeingDragged
-                          ? 'opacity-65 ring-2 ring-amber-500/80 border-amber-500 shadow-2xl z-20'
+                          ? 'opacity-75 ring-2 ring-amber-500/80 border-amber-500 shadow-2xl z-30'
                           : isDragTarget
-                          ? 'border-amber-500/80 ring-1 ring-amber-500/40'
+                          ? 'border-amber-500/80 ring-2 ring-amber-500/40 shadow-lg z-20'
+                          : isRecentlyMoved
+                          ? 'border-amber-500/70 ring-1 ring-amber-500/35 shadow-md z-10'
                           : isCustomizingLayout
                           ? 'border-amber-500/40 dark:border-amber-500/35 cursor-grab active:cursor-grabbing'
                           : 'border-stone-200/85 dark:border-stone-800/90'
                       }`}
                     >
-                      {/* Subtle Quick Drag Handle in Standard View (top-right corner on hover/focus) */}
+                      {/* Subtle Quick Reorder & Drag Handle in Standard View (top-right corner on hover/focus) */}
                       {!isCustomizingLayout && (
-                        <div
-                          onMouseDown={() => setDragHandleArmedId(widget.id)}
-                          onMouseUp={() => setDragHandleArmedId(null)}
-                          onTouchStart={() => setDragHandleArmedId(widget.id)}
-                          onTouchEnd={() => setDragHandleArmedId(null)}
-                          title="Drag to reorder widget"
-                          aria-label={`Drag handle to reorder ${widget.title}`}
-                          className="absolute top-2.5 right-2.5 z-10 p-1 rounded-md text-stone-300 dark:text-stone-600 opacity-0 group-hover/widget:opacity-100 focus-within:opacity-100 hover:text-stone-700 dark:hover:text-amber-400 hover:bg-stone-100 dark:hover:bg-stone-800/80 cursor-grab active:cursor-grabbing transition-opacity"
-                        >
-                          <GripVertical className="w-3.5 h-3.5" />
+                        <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-0.5 rounded-lg bg-white/90 dark:bg-stone-900/90 border border-stone-200/70 dark:border-stone-800/80 px-1 py-0.5 shadow-2xs opacity-0 group-hover/widget:opacity-100 focus-within:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            disabled={!canMovePrev}
+                            onClick={() =>
+                              moveWidgetByStep(widget.id, -1, displayedWidgets)
+                            }
+                            title="Move widget earlier in grid"
+                            aria-label={`Move ${widget.title} earlier`}
+                            className="p-0.5 rounded text-stone-400 hover:text-stone-800 dark:hover:text-amber-400 disabled:opacity-25 disabled:pointer-events-none transition-colors"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                          </button>
+                          <div
+                            onMouseDown={() => setDragHandleArmedId(widget.id)}
+                            onMouseUp={() => setDragHandleArmedId(null)}
+                            onTouchStart={() => setDragHandleArmedId(widget.id)}
+                            onTouchEnd={() => setDragHandleArmedId(null)}
+                            title="Drag to reorder widget"
+                            aria-label={`Drag handle to reorder ${widget.title}`}
+                            className="p-0.5 rounded text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-amber-400 cursor-grab active:cursor-grabbing transition-colors"
+                          >
+                            <GripVertical className="w-3.5 h-3.5" />
+                          </div>
+                          <button
+                            type="button"
+                            disabled={!canMoveNext}
+                            onClick={() =>
+                              moveWidgetByStep(widget.id, 1, displayedWidgets)
+                            }
+                            title="Move widget later in grid"
+                            aria-label={`Move ${widget.title} later`}
+                            className="p-0.5 rounded text-stone-400 hover:text-stone-800 dark:hover:text-amber-400 disabled:opacity-25 disabled:pointer-events-none transition-colors"
+                          >
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       )}
 
@@ -1542,6 +1846,7 @@ function OrahWorkspace() {
                       <AnimatePresence initial={false}>
                         {isCustomizingLayout && (
                           <motion.div
+                            layout="position"
                             initial={
                               prefersReducedMotion
                                 ? false
@@ -1566,20 +1871,78 @@ function OrahWorkspace() {
                               </span>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              {([1, 2, 3] as WidgetSpan[]).map((sp) => (
+                              {/* Step Reorder Controls for Smooth LayoutGroup Transitions */}
+                              <div className="flex items-center rounded-md bg-white/90 dark:bg-stone-800 border border-amber-500/30 p-0.5">
                                 <button
-                                  key={sp}
                                   type="button"
-                                  onClick={() => changeWidgetSpan(widget.id, sp)}
-                                  className={`px-2 py-0.5 text-[11px] font-mono rounded ${
-                                    widget.span === sp
-                                      ? 'bg-amber-700 text-white dark:bg-amber-500 dark:text-stone-950 font-semibold'
-                                      : 'bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-300'
-                                  }`}
+                                  disabled={!canMovePrev}
+                                  onClick={() =>
+                                    moveWidgetByStep(
+                                      widget.id,
+                                      -1,
+                                      displayedWidgets
+                                    )
+                                  }
+                                  title="Move widget earlier"
+                                  aria-label={`Move ${widget.title} earlier`}
+                                  className="p-0.5 rounded text-stone-600 dark:text-stone-300 hover:bg-amber-100/70 dark:hover:bg-stone-700 disabled:opacity-30 disabled:pointer-events-none transition-colors"
                                 >
-                                  {sp}col
+                                  <ChevronLeft className="w-3.5 h-3.5" />
                                 </button>
-                              ))}
+                                <button
+                                  type="button"
+                                  disabled={!canMoveNext}
+                                  onClick={() =>
+                                    moveWidgetByStep(
+                                      widget.id,
+                                      1,
+                                      displayedWidgets
+                                    )
+                                  }
+                                  title="Move widget later"
+                                  aria-label={`Move ${widget.title} later`}
+                                  className="p-0.5 rounded text-stone-600 dark:text-stone-300 hover:bg-amber-100/70 dark:hover:bg-stone-700 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                                >
+                                  <ChevronRight className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+
+                              {/* Animated Width Span Selector inside LayoutGroup */}
+                              <div className="flex items-center rounded-md bg-white/90 dark:bg-stone-800 border border-amber-500/30 p-0.5">
+                                {([1, 2, 3] as WidgetSpan[]).map((sp) => {
+                                  const isSelected = widget.span === sp;
+                                  return (
+                                    <button
+                                      key={sp}
+                                      type="button"
+                                      onClick={() =>
+                                        changeWidgetSpan(widget.id, sp)
+                                      }
+                                      className={`relative px-2 py-0.5 text-[11px] font-mono rounded transition-colors ${
+                                        isSelected
+                                          ? 'text-white dark:text-stone-950 font-semibold'
+                                          : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+                                      }`}
+                                    >
+                                      {isSelected && (
+                                        <motion.span
+                                          layoutId={`span-pill-${widget.id}`}
+                                          transition={{
+                                            type: 'spring',
+                                            stiffness: 420,
+                                            damping: 32,
+                                          }}
+                                          className="absolute inset-0 rounded bg-amber-700 dark:bg-amber-500"
+                                        />
+                                      )}
+                                      <span className="relative z-10">
+                                        {sp}col
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
                               <button
                                 type="button"
                                 onClick={() => toggleWidgetVisibility(widget.id)}
@@ -1617,6 +1980,47 @@ function OrahWorkspace() {
                           selectedDate={selectedDate}
                           location={location}
                           onSelectDate={jumpToSpecificDate}
+                          onOpenReader={(ref, title) =>
+                            setReaderRef({ ref, title })
+                          }
+                        />
+                      )}
+
+                      {widget.type === 'chayenu_daily' && (
+                        <ChayenuDailyWidget
+                          selectedDate={selectedDate}
+                          onChangeDate={jumpToSpecificDate}
+                          parsha={parsha}
+                          onOpenReader={(ref, title) =>
+                            setReaderRef({ ref, title })
+                          }
+                        />
+                      )}
+
+                      {widget.type === 'shiurim_tracker' && (
+                        <ShiurimTrackerWidget
+                          selectedDate={selectedDate}
+                          onChangeDate={jumpToSpecificDate}
+                          onOpenReader={(ref, title) =>
+                            setReaderRef({ ref, title })
+                          }
+                        />
+                      )}
+
+                      {widget.type === 'rambam_daily' && (
+                        <RambamDailyWidget
+                          selectedDate={selectedDate}
+                          onChangeDate={jumpToSpecificDate}
+                          onOpenReader={(ref, title) =>
+                            setReaderRef({ ref, title })
+                          }
+                        />
+                      )}
+
+                      {widget.type === 'geulah_moshiach' && (
+                        <GeulahMoshiachWidget
+                          selectedDate={selectedDate}
+                          onChangeDate={jumpToSpecificDate}
                           onOpenReader={(ref, title) =>
                             setReaderRef({ ref, title })
                           }
@@ -1743,6 +2147,15 @@ function OrahWorkspace() {
           <div className="flex items-center gap-4">
             <button
               type="button"
+              onClick={() => setIsSettingsOpen(true)}
+              className="text-stone-600 dark:text-stone-400 hover:text-amber-700 dark:hover:text-amber-400 transition-colors inline-flex items-center gap-1"
+            >
+              <Settings className="w-3.5 h-3.5 text-stone-400" />
+              <span>Export / Import Configuration</span>
+            </button>
+            <span className="text-stone-300 dark:text-stone-700">·</span>
+            <button
+              type="button"
               onClick={() => setIsGalleryOpen(true)}
               className="text-amber-700 dark:text-amber-400 hover:underline font-medium"
             >
@@ -1776,6 +2189,41 @@ function OrahWorkspace() {
         onAddCustomWidget={addCustomWidget}
         onDeleteCustomWidget={deleteCustomWidget}
         onApplyPreset={applyPreset}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+      />
+
+      {/* Workspace Settings & Export/Import Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        widgets={widgets}
+        location={location}
+        shita={shita}
+        darkMode={darkMode}
+        onApplyImport={handleApplyImport}
+        onResetDefaults={handleResetDefaults}
+        onChangeShita={handleSelectShita}
+        onChangeLocation={setLocation}
+      />
+
+      {/* First-Visit Interactive Welcome Tutorial Modal */}
+      <OnboardingTutorialModal
+        isOpen={isTutorialOpen}
+        onClose={handleCloseTutorial}
+        shita={shita}
+        onChangeShita={handleSelectShita}
+        location={location}
+        onOpenLocationPicker={() => setIsLocationPickerOpen(true)}
+        onOpenGallery={() => setIsGalleryOpen(true)}
+        onOpenVoiceSearch={() =>
+          setReaderRef({
+            ref: parsha?.fullRef || 'Berakhot 2a',
+            title: parsha
+              ? `${parsha.nameEn} · ${parsha.nameHe}`
+              : 'Berakhot 2a · מסכת ברכות',
+            autoStartVoice: true,
+          })
+        }
       />
 
       {/* Offline Status Toast Indicator */}
