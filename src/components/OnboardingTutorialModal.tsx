@@ -10,10 +10,13 @@ import {
   Clock,
   Compass,
   Download,
+  EyeOff,
   GraduationCap,
+  GripVertical,
   LayoutGrid,
   MapPin,
   Mic,
+  SlidersHorizontal,
   Sparkles,
   Sun,
   X,
@@ -32,6 +35,7 @@ interface OnboardingTutorialModalProps {
   onOpenLocationPicker: () => void;
   onOpenGallery: () => void;
   onOpenVoiceSearch: () => void;
+  onToggleEditGrid?: () => void;
 }
 
 interface StepCopy {
@@ -61,6 +65,7 @@ const TUTORIAL_TRANSLATIONS: Record<
     changeLocationBtn: string;
     tryVoiceBtn: string;
     customizeWidgetsBtn: string;
+    editGridBtn: string;
     steps: StepCopy[];
   }
 > = {
@@ -77,6 +82,7 @@ const TUTORIAL_TRANSLATIONS: Record<
     changeLocationBtn: 'Change City / GPS',
     tryVoiceBtn: 'Preview Voice Search',
     customizeWidgetsBtn: 'Explore Widget Gallery',
+    editGridBtn: 'Try Edit Grid Mode',
     steps: [
       {
         badge: 'Welcome · ברוכים הבאים',
@@ -168,25 +174,29 @@ const TUTORIAL_TRANSLATIONS: Record<
       },
       {
         badge: 'Personalize · התאמה אישית',
-        hebrewTitle: 'סידור הלוח, גיבוי ואפליקציה לאופליין',
-        title: 'Bento Grid Layout, Backup & Offline App',
+        hebrewTitle: 'התאמת הלוח: הזזה, הסרה והוספת ווידג׳טים',
+        title: 'Move, Remove & Arrange Widgets as Wanted',
         subtitle:
-          'Tailor the workspace to your daily rhythm and safeguard your personal setup across devices.',
+          'Tailor your sanctuary layout to your daily rhythm — reorder cards, hide unwanted tools, or add widgets as wanted.',
         bullets: [
           {
-            title: 'Fluid Bento Grid Rearranging',
-            desc: 'Click "Edit Grid" to drag-and-drop widgets, resize cards between 1, 2, or 3 columns, or filter by Zmanim, Torah, or Infographic view.',
+            title: 'Move & Reorder Widgets Fluidly',
+            desc: 'Click "Edit Grid" in the top bar to drag and drop widgets, or use the ◄ and ► reorder buttons on any card to shift its position with smooth animated transitions.',
           },
           {
-            title: 'Export & Import JSON Configuration',
-            desc: 'Download a complete backup of your widget arrangement, custom shiurim, and preferences in Settings, and restore it anytime.',
+            title: 'Remove or Hide Widgets as Wanted',
+            desc: 'Click the eye icon on any card during Edit Grid mode to remove it from your active view. You can also hide or unhide widgets anytime from the Widget Gallery (+).',
           },
           {
-            title: 'Offline App & Printable Luach',
-            desc: 'Install Orah as an offline-capable web app or download an offline HTML pocket Luach for Shabbat and travel.',
+            title: 'Adjust Card Widths (1, 2, or 3 Columns)',
+            desc: 'Expand widgets across 1 column (compact), 2 columns (standard), or 3 columns (panoramic) to emphasize the texts and tools you use most.',
+          },
+          {
+            title: 'Export, Import & Offline Luach',
+            desc: 'Backup your customized widget order and personal preferences as a JSON file in Settings, or download an offline pocket Luach to view anytime without internet.',
           },
         ],
-        tip: 'You can reopen this guide anytime from the "Guide" button in the top bar or footer.',
+        tip: 'Click "Try Edit Grid Mode" below to start rearranging or hiding widgets right now.',
       },
     ],
   },
@@ -203,6 +213,7 @@ const TUTORIAL_TRANSLATIONS: Record<
     changeLocationBtn: 'Changer de ville / GPS',
     tryVoiceBtn: 'Tester la recherche vocale',
     customizeWidgetsBtn: 'Galerie de widgets',
+    editGridBtn: 'Modifier la grille',
     steps: [
       {
         badge: 'Bienvenue · ברוכים הבאים',
@@ -329,6 +340,7 @@ const TUTORIAL_TRANSLATIONS: Record<
     changeLocationBtn: 'Cambiar ciudad / GPS',
     tryVoiceBtn: 'Probar búsqueda por voz',
     customizeWidgetsBtn: 'Galería de widgets',
+    editGridBtn: 'Probar modo de edición',
     steps: [
       {
         badge: 'Bienvenida · ברוכים הבאים',
@@ -420,25 +432,29 @@ const TUTORIAL_TRANSLATIONS: Record<
       },
       {
         badge: 'Personalización · התאמה אישית',
-        hebrewTitle: 'סידור הלוח, גיבוי ואפליקציה לאופליין',
-        title: 'Cuadrícula Bento, Respaldo JSON y Modo Sin Conexión',
+        hebrewTitle: 'התאמת הלוח: הזזה, הסרה והוספת ווידג׳טים',
+        title: 'Mover, Ocultar y Organizar Widgets a tu gusto',
         subtitle:
-          'Adapta el panel a tu rutina diaria y respalda tu configuración.',
+          'Adapta el santuario a tu ritmo diario — reordena las tarjetas, oculta herramientas que no uses y añade nuevos widgets.',
         bullets: [
           {
-            title: 'Transiciones Fluidas de Diseño',
-            desc: 'Reordena widgets arrastrándolos, cambia su ancho de columna o filtra por vistas de Zmanim, Torá o Infografía.',
+            title: 'Mover y Reordenar Widgets',
+            desc: 'Haz clic en «Editar cuadrícula» para arrastrar las tarjetas o usa los botones ◄ y ► en la esquina de cada widget para mover su posición con animaciones fluidas.',
           },
           {
-            title: 'Exportar e Importar Configuración JSON',
-            desc: 'Descarga un archivo JSON con tu diseño y preferencias desde Ajustes y restáuralo cuando quieras.',
+            title: 'Eliminar u Ocultar Widgets',
+            desc: 'Haz clic en el icono del ojo en cualquier tarjeta durante el modo de edición para ocultarla. Puedes reactivarlas cuando quieras desde la Galería (+).',
           },
           {
-            title: 'Aplicación Offline',
-            desc: 'Instala Orah para uso sin conexión o descarga un Luaj portátil para Shabat.',
+            title: 'Cambiar el Ancho (1, 2 o 3 columnas)',
+            desc: 'Amplía las tarjetas a 1 columna (compacta), 2 columnas (ancha) o 3 columnas (completa) según la prioridad de tu estudio.',
+          },
+          {
+            title: 'Respaldo JSON y Luaj Sin Conexión',
+            desc: 'Descarga tu diseño y preferencias en formato JSON desde Ajustes, o descarga un Luaj portátil autónomo para estudiar sin conexión a internet.',
           },
         ],
-        tip: 'Puedes volver a abrir este tutorial cuando quieras desde el botón «Guía» en la barra superior.',
+        tip: 'Haz clic en «Probar modo de edición» para empezar a mover u ocultar widgets.',
       },
     ],
   },
@@ -455,6 +471,7 @@ const TUTORIAL_TRANSLATIONS: Record<
     changeLocationBtn: 'Сменить город / GPS',
     tryVoiceBtn: 'Голосовой поиск',
     customizeWidgetsBtn: 'Галерея виджетов',
+    editGridBtn: 'Режим редактирования',
     steps: [
       {
         badge: 'Добро пожаловать · ברוכים הבאים',
@@ -546,25 +563,29 @@ const TUTORIAL_TRANSLATIONS: Record<
       },
       {
         badge: 'Персонализация · התאמה אישית',
-        hebrewTitle: 'סידור הלוח, גיבוי ואפליקציה לאופליין',
-        title: 'Сетка виджетов, резервная копия JSON и офлайн-режим',
+        hebrewTitle: 'התאמת הלוח: הזזה, הסרה והוספת ווידג׳טים',
+        title: 'Перемещение, скрытие и настройка виджетов',
         subtitle:
-          'Настройте панель под свой распорядок дня и сохраните конфигурацию в файл.',
+          'Организуйте рабочее пространство по своему вкусу — меняйте порядок карточек, скрывайте ненужные инструменты и добавляйте новые.',
         bullets: [
           {
-            title: 'Плавная перестановка виджетов',
-            desc: 'Перетаскивайте карточки, меняйте их ширину (1, 2 или 3 колонки) или переключайтесь в режим инфографики.',
+            title: 'Перемещение и изменение порядка виджетов',
+            desc: 'Нажмите «Режим редактирования», чтобы перетаскивать виджеты мышью, или используйте стрелки ◄ и ► для плавного перемещения карточек.',
           },
           {
-            title: 'Экспорт и импорт настроек (JSON)',
-            desc: 'Скачивайте полную копию вашего расположения виджетов и настроек в меню Settings.',
+            title: 'Удаление и скрытие виджетов',
+            desc: 'Нажмите на значок глаза на карточке в режиме редактирования, чтобы скрыть ее. Скрытые виджеты всегда можно вернуть в «Галерее виджетов» (+).',
           },
           {
-            title: 'Офлайн-приложение',
-            desc: 'Установите Orah как веб-приложение или скачайте автономный календарь перед Шаббатом.',
+            title: 'Изменение ширины (1, 2 или 3 колонки)',
+            desc: 'Переключайте ширину карточек между 1, 2 или 3 колонками, чтобы выделить наиболее важные тексты и таймеры.',
+          },
+          {
+            title: 'Резервная копия JSON и автономный календарь',
+            desc: 'Сохраняйте расположение виджетов и личные настройки в файл JSON через настройки или скачивайте автономный календарь для работы без интернета.',
           },
         ],
-        tip: 'Вы всегда можете снова открыть этот гид с помощью кнопки «Guide» в верхней панели.',
+        tip: 'Нажмите «Режим редактирования» ниже, чтобы попробовать перемещение и скрытие виджетов.',
       },
     ],
   },
@@ -581,6 +602,7 @@ export const OnboardingTutorialModal: React.FC<OnboardingTutorialModalProps> = (
   onOpenLocationPicker,
   onOpenGallery,
   onOpenVoiceSearch,
+  onToggleEditGrid,
 }) => {
   const { lang } = useLanguage();
   const [stepIndex, setStepIndex] = useState<number>(0);
@@ -841,21 +863,66 @@ export const OnboardingTutorialModal: React.FC<OnboardingTutorialModalProps> = (
           )}
 
           {stepIndex === 4 && (
-            <div className="p-3.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/50 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 text-xs text-stone-700 dark:text-stone-300">
-                <Download className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
-                <span>{currentStep.tip}</span>
+            <div className="p-3.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/50 space-y-3">
+              {/* Interactive Demo Card illustrating moving, resizing, and removing widgets */}
+              <div className="p-3 rounded-lg bg-white dark:bg-stone-900 border border-amber-300 dark:border-amber-700/60 shadow-xs space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dashed border-amber-400/50 dark:border-amber-600/40 pb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-900 dark:text-amber-300">
+                    <GripVertical className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>Halachic Zmanim · זמני היום</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    {/* Step reorder arrows demonstration */}
+                    <div className="flex items-center rounded border border-amber-400/40 bg-stone-50 dark:bg-stone-800 px-1 py-0.5 text-stone-600 dark:text-stone-300">
+                      <span className="font-mono text-[10px] font-semibold px-0.5">◄</span>
+                      <span className="text-[10px] text-stone-400 mx-0.5">|</span>
+                      <span className="font-mono text-[10px] font-semibold px-0.5">►</span>
+                      <span className="ml-1 text-[10px] text-stone-500">Move</span>
+                    </div>
+                    {/* Span selector demonstration */}
+                    <div className="flex items-center rounded border border-amber-400/40 bg-stone-50 dark:bg-stone-800 p-0.5 text-[10px] font-mono">
+                      <span className="px-1.5 py-0.5 bg-amber-700 text-white dark:bg-amber-500 dark:text-stone-950 rounded font-semibold">2col</span>
+                      <span className="px-1 text-stone-500">3col</span>
+                    </div>
+                    {/* Remove demonstration */}
+                    <div className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-[10px] font-medium">
+                      <EyeOff className="w-3 h-3" />
+                      <span>Remove</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-stone-600 dark:text-stone-400">
+                  <span>💡 Drag anywhere by the grip handle, adjust widths, or click the eye icon to remove.</span>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenGallery();
-                }}
-                className="px-3 py-1.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs font-medium text-stone-800 dark:text-stone-200 hover:border-amber-500 transition-colors shrink-0"
-              >
-                {copy.customizeWidgetsBtn}
-              </button>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between gap-2 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    if (onToggleEditGrid) {
+                      onToggleEditGrid();
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-amber-700 text-white dark:bg-amber-500 dark:text-stone-950 text-xs font-semibold hover:bg-amber-800 dark:hover:bg-amber-400 transition-colors inline-flex items-center gap-1.5 shrink-0"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span>{copy.editGridBtn}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenGallery();
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs font-medium text-stone-800 dark:text-stone-200 hover:border-amber-500 transition-colors shrink-0"
+                >
+                  {copy.customizeWidgetsBtn}
+                </button>
+              </div>
             </div>
           )}
 

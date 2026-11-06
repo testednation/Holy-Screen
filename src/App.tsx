@@ -760,6 +760,7 @@ function OrahWorkspace() {
             'parsha',
             'limud',
             'weather',
+            'notes',
           ].includes(w.type),
         }))
       );
@@ -782,6 +783,7 @@ function OrahWorkspace() {
             'shabbat_prep',
             'weather',
             'tzedakah',
+            'notes',
           ].includes(w.type),
         }))
       );
@@ -2111,7 +2113,12 @@ function OrahWorkspace() {
 
                       {widget.type === 'tzedakah' && <TzedakahWidget />}
 
-                      {widget.type === 'notes' && <NotesWidget />}
+                      {widget.type === 'notes' && (
+                        <NotesWidget
+                          selectedDate={selectedDate}
+                          onChangeDate={jumpToSpecificDate}
+                        />
+                      )}
 
                       {widget.type === 'world_clocks' && (
                         <WorldClocksWidget
@@ -2215,6 +2222,7 @@ function OrahWorkspace() {
         location={location}
         onOpenLocationPicker={() => setIsLocationPickerOpen(true)}
         onOpenGallery={() => setIsGalleryOpen(true)}
+        onToggleEditGrid={() => setIsCustomizingLayout(true)}
         onOpenVoiceSearch={() =>
           setReaderRef({
             ref: parsha?.fullRef || 'Berakhot 2a',
